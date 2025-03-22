@@ -1,51 +1,57 @@
-let isScrolling = false;
-let scrollSpeed = 1;
-let clickInterval = 0;
-let clickTimer = null;
+// Create container
+const container = document.createElement('div');
+container.className = 'arrows-container';
+container.innerHTML = `
+  <div class="scroll-arrow" data-direction="up">↑</div>
+  <div class="scroll-arrow" data-direction="down">↓</div>
+`;
 
-function autoScroll() {
-    if (isScrolling) {
-        window.scrollBy(0, scrollSpeed);
-        requestAnimationFrame(autoScroll);
-    }
+// Add to body
+document.body.appendChild(container);
+
+// Drag functionality (same as before)
+let isDragging = false;
+let startX, startY, initialX, initialY;
+
+container.addEventListener('mousedown', startDrag);
+document.addEventListener('mousemove', drag);
+document.addEventListener('mouseup', endDrag);
+
+function startDrag(e) {
+  isDragging = true;
+  startX = e.clientX;
+  startY = e.clientY;
+  initialX = container.offsetLeft;
+  initialY = container.offsetTop;
+  container.style.transition = 'none';
 }
 
-function performClick() {
-    // This will click at the center of the viewport
-    const centerX = window.innerWidth / 2;
-    const centerY = window.innerHeight / 2;
-    const element = document.elementFromPoint(centerX, centerY);
-    if (element) {
-        element.click();
-    }
+function drag(e) {
+  if (!isDragging) return;
+  e.preventDefault();
+  
+  const dx = e.clientX - startX;
+  const dy = e.clientY - startY;
+  
+  container.style.left = `${initialX + dx}px`;
+  container.style.top = `${initialY + dy}px`;
 }
 
+function endDrag() {
+  isDragging = false;
+  container.style.transition = 'all 0.3s';
+}
 
-
-chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
-    if (request.action === 'toggle') {
-        isScrolling = !isScrolling;
-        clickInterval = request.clickInterval;
-        if (isScrolling) {
-            autoScroll();
-            if (clickInterval > 0) {
-                clickTimer = setInterval(performClick, clickInterval * 1000);
-            }
-        } else {
-            if (clickTimer) {
-                clearInterval(clickTimer);
-            }
-        }
-    } else if (request.action === 'setSpeed') {
-        scrollSpeed = request.speed;
-    } else if (request.action === 'setClickInterval') {
-        clickInterval = request.interval;
-        if (clickTimer) {
-            clearInterval(clickTimer);
-        }
-        if (isScrolling && clickInterval > 0) {
-            clickTimer = setInterval(performClick, clickInterval * 1000);
-        }
+// Updated scroll functionality (only up/down)
+container.querySelectorAll('.scroll-arrow').forEach(arrow => {
+  arrow.addEventListener('click', (e) => {
+    const direction = e.target.dataset.direction;
+    const scrollAmount = 100;
+    
+    if (direction === 'up') {
+      window.scrollBy({ top: -scrollAmount, behavior: 'smooth' });
+    } else if (direction === 'down') {
+      window.scrollBy({ top: scrollAmount, behavior: 'smooth' });
     }
+  });
 });
-
